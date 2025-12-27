@@ -27,7 +27,7 @@ public class CartController {
         try {
             Cart cart = cartService.getCart(cartId);
             CartDto cartDto = cartService.convertToCartDto(cart);
-            return ResponseEntity.ok(new APIResponse(GlobalVariable.CURRENT_DATE, "Success", cartDto));
+            return ResponseEntity.ok(new APIResponse(GlobalVariable.getCurrentDateTime(), "Success", cartDto));
         } catch (ResourceNotFoundException e) {
             return ResponseEntity.status(NOT_FOUND).body(new APIResponse(e.getMessage(), null));
         }

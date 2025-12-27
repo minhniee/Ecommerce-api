@@ -20,8 +20,9 @@ public class Role {
 
     @ManyToMany(mappedBy = "roles")
     private Collection<User> users = new HashSet<>();
+    
     public Role(String name) {
-        this.id = id;
         this.name = name;
+        // id sẽ được tự động generate bởi @GeneratedValue
     }
 }

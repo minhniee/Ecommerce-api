@@ -1,0 +1,33 @@
+# Environment variables và secrets
+.env
+.env.local
+.env.production
+*.env
+
+# Application properties với secrets (nếu có)
+application-secrets.properties
+application-local.properties
+
+# IDE
+.idea/
+*.iml
+.vscode/
+*.swp
+*.swo
+*~
+
+# Build
+target/
+*.class
+*.jar
+*.war
+*.ear
+
+# Logs
+*.log
+logs/
+
+# OS
+.DS_Store
+Thumbs.db
+

@@ -9,6 +9,7 @@ import com.example.auth_shop.request.AddProductRequest;
 import com.example.auth_shop.request.ProductUpdateRequest;
 import com.example.auth_shop.response.APIResponse;
 import com.example.auth_shop.service.product.IProductService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -52,15 +53,15 @@ public class ProductController {
 
     @PreAuthorize("hasAnyRole('ROLE_ADMIN')")
     @PostMapping("/add")
-    public ResponseEntity<APIResponse> addProduct(@RequestBody AddProductRequest reqs) {
+    public ResponseEntity<APIResponse> addProduct(@Valid @RequestBody AddProductRequest reqs) {
         try {
             Product product = productService.addProduct(reqs);
             ProductDto convertedProduct = productService.convertToProductDto(product);
             return ResponseEntity.ok(new APIResponse("Added", convertedProduct));
         }catch (AlreadyExistsException e) {
-            return ResponseEntity.status(CONFLICT).body(new APIResponse(GlobalVariable.CURRENT_DATE,e.getMessage(), null));
+            return ResponseEntity.status(CONFLICT).body(new APIResponse(GlobalVariable.getCurrentDateTime(), e.getMessage(), null));
         }catch ( RuntimeException e) {
-            return ResponseEntity.status(INTERNAL_SERVER_ERROR).body(new APIResponse(GlobalVariable.CURRENT_DATE,e.getMessage(), null));
+            return ResponseEntity.status(INTERNAL_SERVER_ERROR).body(new APIResponse(GlobalVariable.getCurrentDateTime(), e.getMessage(), null));
 
         }
     }
@@ -78,7 +79,7 @@ public class ProductController {
 
     @PreAuthorize("hasAnyRole('ROLE_ADMIN')")
     @PutMapping("/product/{id}/update")
-    public ResponseEntity<APIResponse> updateProduct(@RequestBody ProductUpdateRequest reqs, @PathVariable Long id) {
+    public ResponseEntity<APIResponse> updateProduct(@Valid @RequestBody ProductUpdateRequest reqs, @PathVariable Long id) {
         try {
             Product product = productService.updateProduct(reqs, id);
             ProductDto convertedProduct = productService.convertToProductDto(product);

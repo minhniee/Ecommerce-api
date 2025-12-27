@@ -9,6 +9,7 @@ import com.example.auth_shop.request.CreatedUserRequest;
 import com.example.auth_shop.request.UpdateUserRequest;
 import com.example.auth_shop.response.APIResponse;
 import com.example.auth_shop.service.user.IUserService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -21,7 +22,7 @@ public class UserController {
     private final IUserService userService;
 
     @GetMapping("/{userId}/user")
-    private ResponseEntity<APIResponse> getUserById(@PathVariable Long userId) {
+    public ResponseEntity<APIResponse> getUserById(@PathVariable Long userId) {
         try {
 
             User user = userService.getUserById(userId);
@@ -32,7 +33,7 @@ public class UserController {
         }
     }
     @PostMapping("/user/create")
-    private ResponseEntity<APIResponse> createUser(@RequestBody CreatedUserRequest req) {
+    public ResponseEntity<APIResponse> createUser(@Valid @RequestBody CreatedUserRequest req) {
         try {
             User user = userService.createUser(req);
             UserDto userDto  = userService.convertToDTO(user);
@@ -44,7 +45,7 @@ public class UserController {
     }
 
     @PutMapping("/{userId}/update")
-    private ResponseEntity<APIResponse> updateUser(@RequestBody UpdateUserRequest req, @PathVariable Long userId) {
+    public ResponseEntity<APIResponse> updateUser(@Valid @RequestBody UpdateUserRequest req, @PathVariable Long userId) {
         try {
             User user = userService.updateUser(req,userId);
             UserDto userDto = userService.convertToDTO(user);
@@ -55,7 +56,7 @@ public class UserController {
     }
 
     @DeleteMapping("/{userId}/delete")
-    private ResponseEntity<APIResponse> deleteUser(@PathVariable Long userId) {
+    public ResponseEntity<APIResponse> deleteUser(@PathVariable Long userId) {
         try {
              userService.deleteUser(userId);
             return ResponseEntity.ok(new APIResponse("Update User Success", null));

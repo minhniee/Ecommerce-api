@@ -4,5 +4,11 @@ import java.time.LocalDateTime;
 
 public class GlobalVariable {
 
-    public static LocalDateTime CURRENT_DATE = LocalDateTime.now();
+    /**
+     * Lấy thời gian hiện tại.
+     * Dùng method thay vì static field để đảm bảo luôn lấy thời gian mới.
+     */
+    public static LocalDateTime getCurrentDateTime() {
+        return LocalDateTime.now();
+    }
 }
