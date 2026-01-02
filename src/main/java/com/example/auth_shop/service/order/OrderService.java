@@ -12,6 +12,8 @@ import com.example.auth_shop.repository.ProductRepository;
 import com.example.auth_shop.service.cart.CartService;
 import lombok.RequiredArgsConstructor;
 import org.modelmapper.ModelMapper;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -85,6 +87,12 @@ public class OrderService implements IOrderService {
                 .stream().
                 map(this::convertToDto)
                 .toList();
+    }
+
+    @Override
+    public Page<OrderDto> getUserOrders(Long userId, Pageable pageable) {
+        return orderRepository.findByUserId(userId, pageable)
+                .map(this::convertToDto);
     }
 
     @Override

@@ -1,54 +1,54 @@
 package com.example.auth_shop.controller;
 
-
+import com.example.auth_shop.config.PaginationConfig;
 import com.example.auth_shop.dto.OrderDto;
-import com.example.auth_shop.exceptions.ResourceNotFoundException;
 import com.example.auth_shop.model.Order;
 import com.example.auth_shop.response.APIResponse;
+import com.example.auth_shop.response.PaginatedResponse;
 import com.example.auth_shop.service.order.IOrderService;
+import com.example.auth_shop.util.PaginationUtils;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 @RequiredArgsConstructor
 @RestController
 @RequestMapping("${api.prefix}/orders")
 public class OrderController {
     private final IOrderService orderService;
+    private final PaginationConfig paginationConfig;
 
-    @PostMapping("/order")
+    @PostMapping
     public ResponseEntity<APIResponse> createOrder(@RequestParam Long userId) {
-        try {
-            Order order = orderService.placeOrder(userId);
-            OrderDto orderDto = orderService.convertToDto(order);
-            return ResponseEntity.ok(new APIResponse("Item Order Success", orderDto));
-        } catch (RuntimeException e) {
-            return ResponseEntity.badRequest().body(new APIResponse("Error Occurred", e.getMessage()));
-        }
+        Order order = orderService.placeOrder(userId);
+        OrderDto orderDto = orderService.convertToDto(order);
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(APIResponse.created("Order placed successfully", orderDto));
     }
 
-    @GetMapping("/order")
-    public ResponseEntity<APIResponse> getOrderById(@RequestParam Long orderId) {
-        try {
-            OrderDto order = orderService.getOrder(orderId);
-            return ResponseEntity.ok(new APIResponse("Success", order));
-        } catch (ResourceNotFoundException e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new APIResponse("Not found!", e.getMessage()));
-        }
+    @GetMapping("/{orderId}")
+    public ResponseEntity<APIResponse> getOrderById(@PathVariable Long orderId) {
+        OrderDto order = orderService.getOrder(orderId);
+        return ResponseEntity.ok(APIResponse.success("Order retrieved successfully", order));
     }
 
-    @GetMapping("/{userId}/orders")
-    public ResponseEntity<APIResponse> getUserOrders(@PathVariable Long userId) {
-        try {
-            List<OrderDto> order = orderService.getUserOrders(userId);
-            return ResponseEntity.ok(new APIResponse("Success", order));
-        } catch (ResourceNotFoundException e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new APIResponse("Not found!", e.getMessage()));
-        }
+    @GetMapping("/user/{userId}")
+    public ResponseEntity<APIResponse> getUserOrders(
+            @PathVariable Long userId,
+            @RequestParam(required = false, defaultValue = "0") int page,
+            @RequestParam(required = false, defaultValue = "20") int size,
+            @RequestParam(required = false, defaultValue = "orderDate") String sortBy,
+            @RequestParam(required = false, defaultValue = "DESC") String sortDir) {
+        
+        Pageable pageable = PaginationUtils.createPageable(
+                page, size, paginationConfig.getMaxPageSize(), sortBy, sortDir);
+        
+        Page<OrderDto> ordersPage = orderService.getUserOrders(userId, pageable);
+        PaginatedResponse<OrderDto> paginatedResponse = PaginatedResponse.of(ordersPage);
+        
+        return ResponseEntity.ok(APIResponse.success("Orders retrieved successfully", paginatedResponse));
     }
-
-
 }

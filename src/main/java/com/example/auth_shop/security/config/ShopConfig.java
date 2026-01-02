@@ -219,6 +219,16 @@ public class ShopConfig {
             // Thứ tự quan trọng: Spring Security kiểm tra từ trên xuống dưới
             // Request đầu tiên match sẽ được áp dụng
             .authorizeHttpRequests(auth -> auth
+                // Swagger/OpenAPI endpoints - Public access
+                .requestMatchers(
+                    "/swagger-ui/**",
+                    "/swagger-ui.html",
+                    "/v3/api-docs/**",
+                    "/swagger-resources/**",
+                    "/webjars/**"
+                )
+                    .permitAll()
+                
                 // Các URLs cần authentication
                 .requestMatchers(SECURED_URLS.toArray(String[]::new))
                     .authenticated()  // Phải đã authenticate

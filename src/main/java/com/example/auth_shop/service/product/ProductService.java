@@ -14,6 +14,8 @@ import com.example.auth_shop.request.AddProductRequest;
 import com.example.auth_shop.request.ProductUpdateRequest;
 import lombok.RequiredArgsConstructor;
 import org.modelmapper.ModelMapper;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -101,8 +103,18 @@ public class ProductService implements IProductService {
     }
 
     @Override
+    public Page<Product> getAllProducts(Pageable pageable) {
+        return productRepo.findAll(pageable);
+    }
+
+    @Override
     public List<Product> getProductsByCategory(String category) {
         return productRepo.findByCategoryName(category);
+    }
+
+    @Override
+    public Page<Product> getProductsByCategory(String category, Pageable pageable) {
+        return productRepo.findByCategoryName(category, pageable);
     }
 
     @Override
@@ -111,8 +123,18 @@ public class ProductService implements IProductService {
     }
 
     @Override
+    public Page<Product> getProductsByBrand(String brandName, Pageable pageable) {
+        return productRepo.findByBrand(brandName, pageable);
+    }
+
+    @Override
     public List<Product> getProductsByCategoryAndBrand(String category, String brandName) {
         return productRepo.findByCategoryNameAndBrand(category, brandName);
+    }
+
+    @Override
+    public Page<Product> getProductsByCategoryAndBrand(String category, String brandName, Pageable pageable) {
+        return productRepo.findByCategoryNameAndBrand(category, brandName, pageable);
     }
 
     @Override
@@ -121,8 +143,18 @@ public class ProductService implements IProductService {
     }
 
     @Override
+    public Page<Product> getProductsByName(String productName, Pageable pageable) {
+        return productRepo.findByName(productName, pageable);
+    }
+
+    @Override
     public List<Product> getProductsByBrandAndName(String brandName, String productName) {
         return productRepo.findByBrandAndName(brandName, productName);
+    }
+
+    @Override
+    public Page<Product> getProductsByBrandAndName(String brandName, String productName, Pageable pageable) {
+        return productRepo.findByBrandAndName(brandName, productName, pageable);
     }
 
     @Override
@@ -133,6 +165,11 @@ public class ProductService implements IProductService {
     @Override
     public List<ProductDto> getConvertedProducts(List<Product> products) {
         return products.stream().map(this::convertToProductDto).toList();
+    }
+
+    @Override
+    public Page<ProductDto> getConvertedProducts(Page<Product> products) {
+        return products.map(this::convertToProductDto);
     }
 
     @Override

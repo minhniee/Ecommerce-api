@@ -1,87 +1,71 @@
 package com.example.auth_shop.controller;
 
-import com.example.auth_shop.exceptions.AlreadyExistsException;
-import com.example.auth_shop.exceptions.ResourceNotFoundException;
+import com.example.auth_shop.config.PaginationConfig;
 import com.example.auth_shop.model.Category;
 import com.example.auth_shop.response.APIResponse;
-import com.example.auth_shop.service.category.CategoryService;
+import com.example.auth_shop.response.PaginatedResponse;
+import com.example.auth_shop.service.category.ICategoryService;
+import com.example.auth_shop.util.PaginationUtils;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
-
-import static org.springframework.http.HttpStatus.*;
 
 @RestController
 @RequestMapping("${api.prefix}/categories")
 @RequiredArgsConstructor
 public class CategoryController {
-    private final CategoryService categoryService;
+    private final ICategoryService categoryService;
+    private final PaginationConfig paginationConfig;
 
-    @GetMapping("/all")
-    public ResponseEntity<APIResponse> getAllCategories() {
-        try {
-            List<Category> categories = categoryService.getAllCategories();
-            return ResponseEntity.ok(new APIResponse("Found!", categories));
-        } catch (Exception e) {
-            e.printStackTrace();
-            return ResponseEntity.status(INTERNAL_SERVER_ERROR).body(new APIResponse("Error", null));
-        }
+    @GetMapping
+    public ResponseEntity<APIResponse> getAllCategories(
+            @RequestParam(required = false, defaultValue = "0") int page,
+            @RequestParam(required = false, defaultValue = "20") int size,
+            @RequestParam(required = false, defaultValue = "id") String sortBy,
+            @RequestParam(required = false, defaultValue = "ASC") String sortDir) {
+        
+        Pageable pageable = PaginationUtils.createPageable(
+                page, size, paginationConfig.getMaxPageSize(), sortBy, sortDir);
+        
+        Page<Category> categoriesPage = categoryService.getAllCategories(pageable);
+        PaginatedResponse<Category> paginatedResponse = PaginatedResponse.of(categoriesPage);
+        
+        return ResponseEntity.ok(APIResponse.success("Categories retrieved successfully", paginatedResponse));
     }
 
-    @PostMapping("/add")
-    public ResponseEntity<APIResponse> addCategory(@RequestBody Category category) {
-        try {
-            Category newCategory = categoryService.addCategory(category);
-            return ResponseEntity.ok(new APIResponse("Added Success", newCategory));
-        } catch (AlreadyExistsException e) {
-            return ResponseEntity.status(CONFLICT).body(new APIResponse(e.getMessage(), null));
-        }
-    }
-    @GetMapping("/test")
-    public ResponseEntity<APIResponse> test() {
-        return ResponseEntity.ok(new APIResponse("Test", null));
+    @GetMapping("/{id}")
+    public ResponseEntity<APIResponse> getCategoryById(@PathVariable Long id) {
+        Category category = categoryService.getCategoryById(id);
+        return ResponseEntity.ok(APIResponse.success("Category retrieved successfully", category));
     }
 
-    @GetMapping("/category/{id}")
-    public ResponseEntity<APIResponse> getCategoryById(@RequestParam Long id) {
-        try {
-            Category category = categoryService.getCategoryById(id);
-            return ResponseEntity.ok(new APIResponse("Found!", category));
-        } catch (ResourceNotFoundException e) {
-            return ResponseEntity.status(NOT_FOUND).body(new APIResponse(e.getMessage(), null));
-        }
-    }
-
-    @GetMapping("/category/{name}")
+    @GetMapping("/name/{name}")
     public ResponseEntity<APIResponse> getCategoryByName(@PathVariable String name) {
-        try {
-            Category category = categoryService.getCategoryByName(name);
-            return ResponseEntity.ok(new APIResponse("Found!", category));
-        } catch (ResourceNotFoundException e) {
-            return ResponseEntity.status(NOT_FOUND).body(new APIResponse(e.getMessage(), null));
-        }
+        Category category = categoryService.getCategoryByName(name);
+        return ResponseEntity.ok(APIResponse.success("Category retrieved successfully", category));
     }
 
-    @GetMapping("/category/{id}/delete")
+    @PostMapping
+    public ResponseEntity<APIResponse> addCategory(@RequestBody Category category) {
+        Category newCategory = categoryService.addCategory(category);
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(APIResponse.created("Category created successfully", newCategory));
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<APIResponse> updateCategory(
+            @RequestBody Category category, 
+            @PathVariable Long id) {
+        Category updatedCategory = categoryService.updateCategory(category, id);
+        return ResponseEntity.ok(APIResponse.success("Category updated successfully", updatedCategory));
+    }
+
+    @DeleteMapping("/{id}")
     public ResponseEntity<APIResponse> deleteCategory(@PathVariable Long id) {
-        try {
-            categoryService.deleteCategoryById(id);
-            return ResponseEntity.ok(new APIResponse("Found!", null));
-        } catch (ResourceNotFoundException e) {
-            return ResponseEntity.status(NOT_FOUND).body(new APIResponse(e.getMessage(), null));
-        }
-    }
-
-    @PostMapping("category/{id}/update")
-    public ResponseEntity<APIResponse> updateCategory(@RequestBody Category category, @PathVariable Long id) {
-        try {
-            Category updateCategory = categoryService.updateCategory(category, id);
-            return ResponseEntity.ok(new APIResponse("Update Success!", updateCategory));
-        } catch (ResourceNotFoundException e) {
-            return ResponseEntity.status(NOT_FOUND).body(new APIResponse(e.getMessage(), null));
-        }
+        categoryService.deleteCategoryById(id);
+        return ResponseEntity.ok(APIResponse.success("Category deleted successfully"));
     }
 }
