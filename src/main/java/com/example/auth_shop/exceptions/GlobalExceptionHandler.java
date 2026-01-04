@@ -220,6 +220,18 @@ public class GlobalExceptionHandler {
                 .body(APIResponse.error(400, ex.getMessage(), request.getRequestURI()));
     }
 
+    /**
+     * 403 - Not owner exception
+     */
+    @ExceptionHandler(NotOwnerException.class)
+    public ResponseEntity<APIResponse> handleNotOwnerException(
+            NotOwnerException ex, HttpServletRequest request) {
+        log.warn("Not owner exception for request: {} - {}", request.getRequestURI(), ex.getMessage());
+        
+        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .body(APIResponse.error(403, ex.getMessage(), request.getRequestURI()));
+    }
+
     // ==================== HTTP METHOD ERRORS ====================
 
     /**

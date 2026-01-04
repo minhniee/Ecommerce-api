@@ -49,7 +49,7 @@ public class ProductController {
         return ResponseEntity.ok(APIResponse.success("Product retrieved successfully", convertedProduct));
     }
 
-    @PreAuthorize("hasRole('ROLE_ADMIN')")
+    // @PreAuthorize("hasRole('ROLE_ADMIN')")
     @PostMapping
     public ResponseEntity<APIResponse> addProduct(@Valid @RequestBody AddProductRequest request) {
         Product product = productService.addProduct(request);
