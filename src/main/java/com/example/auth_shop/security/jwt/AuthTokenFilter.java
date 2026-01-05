@@ -9,7 +9,6 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -69,14 +68,17 @@ import java.util.Map;
 @Slf4j
 public class AuthTokenFilter extends OncePerRequestFilter {
     
-    @Autowired
-    private JwtUtils jwtUtils;
-    
-    @Autowired
-    private ShopUserDetailsService userDetailsService;
+    private final JwtUtils jwtUtils;
+    private final ShopUserDetailsService userDetailsService;
+    private final TokenBlacklistService tokenBlacklistService;
 
-    @Autowired
-    private TokenBlacklistService tokenBlacklistService;
+    public AuthTokenFilter(JwtUtils jwtUtils, 
+                          ShopUserDetailsService userDetailsService,
+                          TokenBlacklistService tokenBlacklistService) {
+        this.jwtUtils = jwtUtils;
+        this.userDetailsService = userDetailsService;
+        this.tokenBlacklistService = tokenBlacklistService;
+    }
 
     /**
      * doFilterInternal - Method chính của filter
@@ -105,33 +107,40 @@ public class AuthTokenFilter extends OncePerRequestFilter {
             // Format: "Authorization: Bearer <token>"
             String jwt = parseJwt(request);
             
-            // Bước 2: Nếu có token và token hợp lệ
-            if (StringUtils.hasText(jwt) && jwtUtils.validateToken(jwt)) {
-                // Bước 3: Extract username (email) từ token
+            // Bước 2: Nếu có token, kiểm tra và validate
+            if (StringUtils.hasText(jwt)) {
+                // Bước 2a: Kiểm tra blacklist TRƯỚC khi validate (tối ưu hơn)
                 if (tokenBlacklistService.isTokenBlacklisted(jwt)) {
-                     handleAuthenticationException(request, response, "Token has been revoked");
-                     return;
+                    handleAuthenticationException(request, response, "Token has been revoked");
+                    return;
                 }
-                String username = jwtUtils.getUserNameFromToken(jwt);
                 
-                // Bước 4: Load UserDetails từ database
-                // UserDetails chứa thông tin user và authorities (roles)
-                UserDetails userDetails = userDetailsService.loadUserByUsername(username);
-                
-                // Bước 5: Tạo Authentication object
-                // UsernamePasswordAuthenticationToken là implementation của Authentication
-                // Parameters: principal (user), credentials (null vì đã validate), authorities
-                Authentication auth = new UsernamePasswordAuthenticationToken(
-                    userDetails,           // Principal - thông tin user
-                    null,                  // Credentials - không cần vì đã validate JWT
-                    userDetails.getAuthorities() // Authorities - roles của user
-                );
-                
-                // Bước 6: Set Authentication vào SecurityContext
-                // SecurityContext được lưu trong ThreadLocal, chỉ tồn tại trong thread hiện tại
-                SecurityContextHolder.getContext().setAuthentication(auth);
-                
-                log.debug("Set SecurityContext for user: {}", username);
+                // Bước 2b: Validate token
+                if (jwtUtils.validateToken(jwt)) {
+                    // Bước 3: Parse token một lần để extract thông tin (tối ưu)
+                    // Tránh parse nhiều lần cho getUserNameFromToken, getUserIdFromToken, etc.
+                    io.jsonwebtoken.Claims claims = jwtUtils.parseToken(jwt);
+                    String username = claims.getSubject();
+                    
+                    // Bước 4: Load UserDetails từ database
+                    // UserDetails chứa thông tin user và authorities (roles)
+                    UserDetails userDetails = userDetailsService.loadUserByUsername(username);
+                    
+                    // Bước 5: Tạo Authentication object
+                    // UsernamePasswordAuthenticationToken là implementation của Authentication
+                    // Parameters: principal (user), credentials (null vì đã validate), authorities
+                    Authentication auth = new UsernamePasswordAuthenticationToken(
+                        userDetails,           // Principal - thông tin user
+                        null,                  // Credentials - không cần vì đã validate JWT
+                        userDetails.getAuthorities() // Authorities - roles của user
+                    );
+                    
+                    // Bước 6: Set Authentication vào SecurityContext
+                    // SecurityContext được lưu trong ThreadLocal, chỉ tồn tại trong thread hiện tại
+                    SecurityContextHolder.getContext().setAuthentication(auth);
+                    
+                    log.debug("Set SecurityContext for user: {}", username);
+                }
             }
             
             // Bước 7: Cho phép request tiếp tục trong filter chain
@@ -139,54 +148,27 @@ public class AuthTokenFilter extends OncePerRequestFilter {
             filterChain.doFilter(request, response);
             
         } catch (JwtException e) {
-            // JWT validation failed - token invalid, expired, hoặc malformed
-            log.error("JWT validation failed: {}", e.getMessage());
-            handleJwtException(request, response, e);
+            // JWT validation/parsing failed - token invalid, expired, hoặc malformed
+            log.debug("JWT error: {}", e.getMessage());
+            handleAuthenticationException(request, response, "Invalid or expired token");
             // KHÔNG gọi filterChain.doFilter() - dừng filter chain và trả về error
             
         } catch (UsernameNotFoundException e) {
             // User không tồn tại trong database
-            log.error("User not found: {}", e.getMessage());
+            log.debug("User not found: {}", e.getMessage());
             handleAuthenticationException(request, response, "User not found");
-            // KHÔNG gọi filterChain.doFilter()
-            
-        } catch (Exception e) {
-            // Các exception khác
-            log.error("Authentication error: {}", e.getMessage(), e);
-            handleAuthenticationException(request, response, "Authentication failed");
             // KHÔNG gọi filterChain.doFilter()
         }
     }
 
     /**
-     * Xử lý JWT exception - trả về response JSON chuẩn
+     * Xử lý authentication exception chung
      * 
      * TẠI SAO KHÔNG EXPOSE CHI TIẾT ERROR?
      * ====================================
      * - Không expose thông tin về token structure
      * - Không cho attacker biết tại sao token fail
      * - Chỉ trả về message chung chung
-     */
-    private void handleJwtException(HttpServletRequest request, 
-                                   HttpServletResponse response, 
-                                   JwtException e) throws IOException {
-        response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-        response.setContentType("application/json");
-        response.setCharacterEncoding("UTF-8");
-        
-        Map<String, Object> errorResponse = new HashMap<>();
-        errorResponse.put("timestamp", LocalDateTime.now());
-        errorResponse.put("status", HttpServletResponse.SC_UNAUTHORIZED);
-        errorResponse.put("error", "Unauthorized");
-        errorResponse.put("message", "Invalid or expired token");
-        errorResponse.put("path", request.getRequestURI());
-        
-        // Không expose chi tiết exception để tránh information leakage
-        response.getWriter().write(new ObjectMapper().writeValueAsString(errorResponse));
-    }
-
-    /**
-     * Xử lý authentication exception chung
      */
     private void handleAuthenticationException(HttpServletRequest request,
                                               HttpServletResponse response,

@@ -283,12 +283,11 @@ public class JwtUtils {
      * 3. Format: Token có đúng cấu trúc (header.payload.signature)
      * 4. Algorithm: Token dùng đúng algorithm (HS256)
      * 
-     * EXCEPTIONS:
-     * - ExpiredJwtException: Token đã hết hạn
-     * - UnsupportedJwtException: Token dùng algorithm không được support
-     * - MalformedJwtException: Token không đúng format
-     * - SignatureException: Signature không hợp lệ
-     * - IllegalArgumentException: Token null hoặc empty
+     * Returns:
+     * - true: Token hợp lệ
+     * - false: Token không hợp lệ (expired, malformed, invalid signature, etc.)
+     * 
+     * Note: Method này return boolean để dễ sử dụng, không throw exception
      */
     public boolean validateToken(String token) {
         try {
@@ -303,28 +302,60 @@ public class JwtUtils {
             
         } catch (ExpiredJwtException e) {
             // Token đã hết hạn
-            log.warn("JWT token expired: {}", e.getMessage());
-            throw new JwtException("Token expired");
+            log.debug("JWT token expired");
+            return false;
             
         } catch (UnsupportedJwtException e) {
             // Token dùng algorithm không được support
-            log.warn("Unsupported JWT token: {}", e.getMessage());
-            throw new JwtException("Unsupported token");
+            log.debug("Unsupported JWT token");
+            return false;
             
         } catch (MalformedJwtException e) {
             // Token không đúng format
-            log.warn("Malformed JWT token: {}", e.getMessage());
-            throw new JwtException("Invalid token format");
+            log.debug("Malformed JWT token");
+            return false;
             
         } catch (SignatureException e) {
             // Signature không hợp lệ - token có thể bị sửa đổi
-            log.warn("Invalid JWT signature: {}", e.getMessage());
-            throw new JwtException("Invalid token signature");
+            log.debug("Invalid JWT signature");
+            return false;
             
         } catch (IllegalArgumentException e) {
             // Token null hoặc empty
-            log.warn("JWT token is null or empty");
-            throw new JwtException("Token cannot be empty");
+            log.debug("JWT token is null or empty");
+            return false;
+        } catch (Exception e) {
+            // Các exception khác
+            log.debug("JWT validation error: {}", e.getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Parse JWT token và trả về Claims
+     * Dùng để tránh parse token nhiều lần
+     * 
+     * @param token JWT token
+     * @return Claims object chứa thông tin trong token
+     * @throws JwtException nếu token không hợp lệ
+     */
+    public Claims parseToken(String token) throws JwtException {
+        try {
+            return Jwts.parserBuilder()
+                    .setSigningKey(key())
+                    .build()
+                    .parseClaimsJws(token)
+                    .getBody();
+        } catch (ExpiredJwtException e) {
+            throw new JwtException("Token expired", e);
+        } catch (UnsupportedJwtException e) {
+            throw new JwtException("Unsupported token", e);
+        } catch (MalformedJwtException e) {
+            throw new JwtException("Invalid token format", e);
+        } catch (SignatureException e) {
+            throw new JwtException("Invalid token signature", e);
+        } catch (IllegalArgumentException e) {
+            throw new JwtException("Token cannot be empty", e);
         }
     }
 

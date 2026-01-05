@@ -40,8 +40,21 @@ public class TokenBlacklistService {
     public boolean isTokenBlacklisted(String token){
         String key = TOKEN_BLACKLIST_PREFIX + token;
         boolean isBlacklisted = Boolean.TRUE.equals(redisTemplate.hasKey(key));
-        log.info("Token {} blacklisted: {}", token, isBlacklisted);
+        // Chỉ log phần đầu và cuối của token để tránh expose full token
+        String maskedToken = maskToken(token);
+        log.debug("Token {} blacklisted: {}", maskedToken, isBlacklisted);
         return isBlacklisted;
+    }
+    
+    /**
+     * Mask token để log an toàn hơn
+     * Chỉ hiển thị 10 ký tự đầu và 10 ký tự cuối
+     */
+    private String maskToken(String token) {
+        if (token == null || token.length() <= 20) {
+            return "***";
+        }
+        return token.substring(0, 10) + "..." + token.substring(token.length() - 10);
     }
     private long calculateTTL(Date expirationDate){
         long currentTime = System.currentTimeMillis();

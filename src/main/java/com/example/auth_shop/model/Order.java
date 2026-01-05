@@ -36,4 +36,8 @@ public class Order {
     @JoinColumn(name = "user_id")
     private User user;
 
+    @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OrderBy("changedAt ASC")
+    private Set<OrderStatusHistory> statusHistory = new HashSet<>();
+
 }

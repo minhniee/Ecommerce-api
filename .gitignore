@@ -15,19 +15,70 @@ application-local.properties
 *.swp
 *.swo
 *~
+.settings/
+.classpath
+.project
 
-# Build
+# Build - Maven
 target/
+!target/.gitkeep
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.versionsBackup
+pom.xml.next
+release.properties
+dependency-reduced-pom.xml
+buildNumber.properties
+.mvn/timing.properties
+.mvn/wrapper/maven-wrapper.jar
+
+# Build - Compiled files
 *.class
 *.jar
 *.war
 *.ear
+*.nar
+*.o
+*.so
+*.dylib
+
+# Build - Gradle (nếu có)
+.gradle/
+build/
+!gradle/wrapper/gradle-wrapper.jar
+!**/src/main/**/build/
+!**/src/test/**/build/
+
+# Package Files
+*.jar
+*.war
+*.nar
+*.ear
+*.zip
+*.tar.gz
+*.rar
 
 # Logs
 *.log
 logs/
-target/
+*.log.*
+*.out
+
 # OS
 .DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
 Thumbs.db
+Desktop.ini
 
+# Spring Boot
+HELP.md
+.gradle/
+
+# Generated files
+*.swp
+*.swo
+*~

@@ -2,7 +2,9 @@ package com.example.auth_shop.security.config;
 
 import com.example.auth_shop.security.jwt.AuthTokenFilter;
 import com.example.auth_shop.security.jwt.JwtAuthEntryPoint;
+import com.example.auth_shop.security.jwt.JwtUtils;
 import com.example.auth_shop.security.user.ShopUserDetailsService;
+import com.example.auth_shop.service.TokenBlacklistService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.modelmapper.ModelMapper;
@@ -66,6 +68,8 @@ import java.util.List;
 public class ShopConfig {
     private final ShopUserDetailsService userDetailsService;
     private final JwtAuthEntryPoint jwtAuthEntryPoint;
+    private final JwtUtils jwtUtils;
+    private final TokenBlacklistService tokenBlacklistService;
 
     // Các URLs cần authentication
     private static final List<String> SECURED_URLS = List.of(
@@ -109,7 +113,7 @@ public class ShopConfig {
      */
     @Bean
     public AuthTokenFilter authTokenFilter() {
-        return new AuthTokenFilter();
+        return new AuthTokenFilter(jwtUtils, userDetailsService, tokenBlacklistService);
     }
 
     /**

@@ -232,6 +232,42 @@ public class GlobalExceptionHandler {
                 .body(APIResponse.error(403, ex.getMessage(), request.getRequestURI()));
     }
 
+    /**
+     * 400 - Order status transition exception
+     */
+    @ExceptionHandler(OrderStatusTransitionException.class)
+    public ResponseEntity<APIResponse> handleOrderStatusTransitionException(
+            OrderStatusTransitionException ex, HttpServletRequest request) {
+        log.warn("Invalid order status transition for request: {} - {}", request.getRequestURI(), ex.getMessage());
+        
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(APIResponse.error(400, ex.getMessage(), request.getRequestURI()));
+    }
+
+    /**
+     * 403 - Account locked exception
+     */
+    @ExceptionHandler(AccountLockedException.class)
+    public ResponseEntity<APIResponse> handleAccountLockedException(
+            AccountLockedException ex, HttpServletRequest request) {
+        log.warn("Account locked for request: {} - {}", request.getRequestURI(), ex.getMessage());
+        
+        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .body(APIResponse.error(403, ex.getMessage(), request.getRequestURI()));
+    }
+
+    /**
+     * 429 - Rate limit exceeded exception
+     */
+    @ExceptionHandler(RateLimitExceededException.class)
+    public ResponseEntity<APIResponse> handleRateLimitExceededException(
+            RateLimitExceededException ex, HttpServletRequest request) {
+        log.warn("Rate limit exceeded for request: {} - {}", request.getRequestURI(), ex.getMessage());
+        
+        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                .body(APIResponse.error(429, ex.getMessage(), request.getRequestURI()));
+    }
+
     // ==================== HTTP METHOD ERRORS ====================
 
     /**

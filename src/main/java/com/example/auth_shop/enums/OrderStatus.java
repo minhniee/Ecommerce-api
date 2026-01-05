@@ -2,8 +2,9 @@ package com.example.auth_shop.enums;
 
 public enum OrderStatus {
     PENDING,
-    PROCESSING,
-    SHIPPED,
+    CONFIRMED,
+    SHIPPING,
     DELIVERED,
-    CANCELLED,
+    COMPLETED,
+    CANCELLED
 }

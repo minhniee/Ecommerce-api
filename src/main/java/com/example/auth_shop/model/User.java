@@ -40,6 +40,13 @@ public class User {
     @NaturalId // ?
     private String email;
     private String password;
+    
+    // Account status fields (permanent lockout - admin can lock/unlock)
+    @Column(nullable = false, columnDefinition = "boolean default true")
+    private boolean accountNonLocked = true;
+    
+    @Column(nullable = false, columnDefinition = "boolean default true")
+    private boolean enabled = true;
 
     @OneToOne(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     private Cart cart;
