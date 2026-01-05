@@ -1,9 +1,11 @@
 package com.example.auth_shop.controller;
 
 import com.example.auth_shop.exceptions.AccountLockedException;
+import com.example.auth_shop.exceptions.AlreadyExistsException;
 import com.example.auth_shop.exceptions.RateLimitExceededException;
 import com.example.auth_shop.request.LoginRequest;
 import com.example.auth_shop.request.RefreshTokenRequest;
+import com.example.auth_shop.request.RegisterRequest;
 import com.example.auth_shop.response.APIResponse;
 import com.example.auth_shop.response.JwtResponse;
 import com.example.auth_shop.security.jwt.JwtUtils;
@@ -13,11 +15,13 @@ import com.example.auth_shop.service.AccountLockoutService;
 import com.example.auth_shop.service.AuditLoggingService;
 import com.example.auth_shop.service.RateLimitingService;
 import com.example.auth_shop.service.TokenBlacklistService;
+import com.example.auth_shop.service.user.UserService;
 import com.example.auth_shop.util.HttpUtils;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -32,6 +36,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.Date;
 
+@Slf4j
 @RequiredArgsConstructor
 @RestController
 @RequestMapping("${api.prefix}/auth")
@@ -43,10 +48,13 @@ public class AuthController {
     private final AccountLockoutService accountLockoutService;
     private final AuditLoggingService auditLoggingService;
     private final ShopUserDetailsService userDetailsService;
+    private final UserService userService;
     
     // Rate limiting configuration
     private static final int LOGIN_RATE_LIMIT = 5; // 5 requests
     private static final int LOGIN_RATE_LIMIT_WINDOW = 60; // per 60 seconds
+    private static final int REGISTER_RATE_LIMIT = 3; // 3 requests
+    private static final int REGISTER_RATE_LIMIT_WINDOW = 300; // per 5 minutes
 
     @PostMapping("/login")
     public ResponseEntity<APIResponse> login(@Valid @RequestBody LoginRequest req, 
@@ -195,5 +203,49 @@ public class AuthController {
         
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .body(APIResponse.badRequest("Invalid Authorization header. Must start with 'Bearer '"));
+    }
+
+    @PostMapping("/register")
+    public ResponseEntity<APIResponse> register(@Valid @RequestBody RegisterRequest req,
+                                               HttpServletRequest request) {
+        String clientIp = HttpUtils.getClientIpAddress(request);
+        String rateLimitKey = "register:" + req.getEmail() + ":" + clientIp;
+        
+        try {
+            // 1. Check rate limit
+            if (rateLimitingService.isRateLimitExceeded(rateLimitKey, REGISTER_RATE_LIMIT, REGISTER_RATE_LIMIT_WINDOW)) {
+                auditLoggingService.logRateLimitExceeded(rateLimitKey, clientIp, "/register");
+                return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                        .body(APIResponse.error(429, 
+                            "Too many registration attempts. Please try again later.", 
+                            request.getRequestURI()));
+            }
+            
+            // 2. Register user
+            userService.register(req);
+            
+            // 3. Reset rate limit (successful registration)
+            rateLimitingService.resetRateLimit(rateLimitKey);
+            
+            // 4. Audit log (có thể thêm method logRegistration nếu cần)
+            log.info("User registration successful: {} from IP: {}", req.getEmail(), clientIp);
+            
+            // 5. Create response
+            return ResponseEntity.status(HttpStatus.CREATED)
+                    .body(APIResponse.success("Registration successful. Please login to continue."));
+            
+        } catch (AlreadyExistsException e) {
+            // Email already exists
+            log.warn("Registration attempt with existing email: {} from IP: {}", req.getEmail(), clientIp);
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body(APIResponse.error(409, e.getMessage(), request.getRequestURI()));
+                    
+        } catch (Exception e) {
+            log.error("Registration error for email: {} from IP: {} - {}", 
+                req.getEmail(), clientIp, e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(APIResponse.error(500, "Registration failed. Please try again later.", 
+                        request.getRequestURI()));
+        }
     }
 }
